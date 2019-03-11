@@ -10,30 +10,6 @@ from cv_bridge import CvBridge, CvBridgeError
 
 
 
-class image_converter:
-
-    def __init__(self):
-
-        cv2.startWindowThread()
-        self.bridge = CvBridge()
-        self.image_colour = rospy.Subscriber("/camera/rgb/image_raw", Image, self.callback)
-        # self.image_depth = rospy.Subscriber('/camera/depth/image_raw', Image, self.depth_callback)
-
-    def callback(self, data):
-        cv2.namedWindow("Segmentation", 1)
-        try:
-            cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
-        except CvBridgeError, e:
-            print e
-
-        bgr_thresh = cv2.inRange(cv_image,
-            numpy.array((0, 0, 50)),
-            numpy.array((20, 20, 255)))
-
-        threshImg = cv2.bitwise_and(cv_image, cv_image, mask=bgr_thresh)
-        cv2.imshow("Segmentation", threshImg)
-        cv2.waitKey(1)
-
 
 class map_nav:
     def __init__(self):
@@ -43,13 +19,18 @@ class map_nav:
         self.map_pub = rospy.Publisher('/move_base_simple/goal', PoseStamped, queue_size=1)
         # this will publish twist commands to make the robot spin or stop
         self.twist_pub = rospy.Publisher('mobile_base/commands/velocity', Twist, queue_size=10)
+        cv2.startWindowThread()
+        self.bridge = CvBridge()
+        self.image_colour = rospy.Subscriber("/camera/rgb/image_raw", Image, self.callback)
+        # self.image_depth = rospy.Subscriber('/camera/depth/image_raw', Image, self.depth_callback)
+
 
     def move_and_spin(self):
         goal = PoseStamped()
         goal.header.stamp = rospy.Time.now()
         goal.header.frame_id = "map"
         goal.pose.position.x = 2.0
-        goal.pose.position.y = 5.0
+        goal.pose.position.y = -5.0
         goal.pose.position.z = 0.0
 
 
@@ -62,6 +43,21 @@ class map_nav:
 
         self.map_pub.publish(goal)
 
+    def callback(self, data):
+        cv2.namedWindow("Segmentation", 1)
+        try:
+            cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
+        except CvBridgeError, e:
+            print e
+
+        bgr_thresh = cv2.inRange(cv_image,
+            np.array((0, 0, 50)),
+            np.array((20, 20, 255)))
+
+        threshImg = cv2.bitwise_and(cv_image, cv_image, mask=bgr_thresh)
+        cv2.imshow("Segmentation", threshImg)
+        cv2.waitKey(1)
+
 
 
 rospy.init_node('navigation', anonymous=True)
@@ -69,4 +65,3 @@ map_nav1 = map_nav()
 map_nav1.move_and_spin()
 rospy.spin()
 cv2.destroyAllWindows()
-

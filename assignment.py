@@ -25,12 +25,12 @@ class map_nav:
         self.image_depth = rospy.Subscriber('/camera/depth/image_raw', Image, self.depth_image_callback)
         self.colours_to_find = ['red', 'green', 'yellow', 'blue']
 
-    def move_and_spin(self):
+    def move_and_spin(self, x, y):
         goal = PoseStamped()
         goal.header.stamp = rospy.Time.now()
         goal.header.frame_id = "map"
-        goal.pose.position.x = 0.0
-        goal.pose.position.y = 0.0
+        goal.pose.position.x = x
+        goal.pose.position.y = y
         goal.pose.position.z = 0.0
 
 
@@ -43,7 +43,6 @@ class map_nav:
 
         self.map_pub.publish(goal)
 
-        self.spin()
 
     def callback(self, data):
         cv2.namedWindow("Segmentation", 1)
@@ -59,7 +58,7 @@ class map_nav:
         
         if 'red' in self.colours_to_find:
             lower_red = np.array([0, 100, 100])
-            upper_red = np.array([5, 100, 360])
+            upper_red = np.array([5, 360, 360])
             red_mask = cv2.inRange(hsv, lower_red, upper_red)
             mask = red_mask
 
@@ -115,6 +114,13 @@ class map_nav:
 
 rospy.init_node('navigation', anonymous=True)
 map_nav1 = map_nav()
-map_nav1.move_and_spin()
+map_nav1.move_and_spin(2.0, -5.0)
+map_nav1.spin()
+rospy.sleep(30)
+map_nav1.move_and_spin(-4.0, 0.0)
+map_nav1.spin()
+rospy.sleep(30)
+map_nav1.move_and_spin(0.0, 0.0)
+map_nav1.spin()
 rospy.spin()
 cv2.destroyAllWindows()

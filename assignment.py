@@ -22,15 +22,15 @@ class map_nav:
         cv2.startWindowThread()
         self.bridge = CvBridge()
         self.image_colour = rospy.Subscriber("/camera/rgb/image_raw", Image, self.callback)
-        # self.image_depth = rospy.Subscriber('/camera/depth/image_raw', Image, self.depth_callback)
-
+        self.image_depth = rospy.Subscriber('/camera/depth/image_raw', Image, self.depth_image_callback)
+        self.colours_to_find = ['red', 'green', 'yellow', 'blue']
 
     def move_and_spin(self):
         goal = PoseStamped()
         goal.header.stamp = rospy.Time.now()
         goal.header.frame_id = "map"
-        goal.pose.position.x = 2.0
-        goal.pose.position.y = -5.0
+        goal.pose.position.x = -1.0
+        goal.pose.position.y = -1.0
         goal.pose.position.z = 0.0
 
 
@@ -43,6 +43,8 @@ class map_nav:
 
         self.map_pub.publish(goal)
 
+        self.spin()
+
     def callback(self, data):
         cv2.namedWindow("Segmentation", 1)
         try:
@@ -50,13 +52,59 @@ class map_nav:
         except CvBridgeError, e:
             print e
 
-        bgr_thresh = cv2.inRange(cv_image,
-            np.array((0, 0, 50)),
-            np.array((20, 20, 255)))
+        # bgr_thresh = cv2.inRange(cv_image,
+            # np.array((0, 0, 50)),
+            # np.array((20, 20, 255)))
+        hsv = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
+        
+        if 'red' in self.colours_to_find:
+            lower_red = np.array([0, 120, 100])
+            upper_red = np.array([10, 360, 360])
+            red_mask = cv2.inRange(hsv, lower_red, upper_red)
+            mask = red_mask
 
-        threshImg = cv2.bitwise_and(cv_image, cv_image, mask=bgr_thresh)
+            # if it finds the colour, move towards it, stop within 1 meter and print found in the terminal
+            # then remove this colour from the list
+        
+        if 'blue' in self.colours_to_find:
+            lower_red = np.array([240, 120, 100])
+            upper_red = np.array([250, 360, 100])
+            blue_mask = cv2.inRange(hsv, lower_red, upper_red)
+            if 'red' in self.colours_to_find:
+                mask = red_mask + blue_mask
+        
+        if 'yellow' in self.colours_to_find:
+            pass
+        
+        if 'green' in self.colours_to_find:
+            pass
+
+
+        # now apply a mask
+
+        threshImg = cv2.bitwise_and(cv_image, cv_image, mask=mask)
+
         cv2.imshow("Segmentation", threshImg)
         cv2.waitKey(1)
+
+    def spin(self):
+        rate = rospy.Rate(50)
+        twist_msg = Twist()
+        twist_msg.linear.x = 0.0
+        twist_msg.linear.y = 0.0
+        twist_msg.linear.z = 4
+        twist_msg.angular.x = 0.0
+        twist_msg.angular.y = 0.0
+        twist_msg.angular.z = 4
+        rospy.loginfo(twist_msg) # logs to terminal screen, but also to rosout and node log file
+        self.twist_pub.publish(twist_msg)
+        rate.sleep()
+
+    def depth_image_callback(self, data):
+        self.depth_image_CV2 = self.bridge.imgmsg_to_cv2(data, "32FC1")
+
+
+
 
 
 

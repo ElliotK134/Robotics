@@ -92,7 +92,7 @@ class map_nav:
         cv2.waitKey(1)
 
     def spin(self):
-        rate = rospy.Rate(50)
+        rate = rospy.Rate(100)
         twist_msg = Twist()
         twist_msg.linear.x = 0.0
         twist_msg.linear.y = 0.0
@@ -102,7 +102,8 @@ class map_nav:
         twist_msg.angular.z = 4
         rospy.loginfo(twist_msg) # logs to terminal screen, but also to rosout and node log file
         self.twist_pub.publish(twist_msg)
-        rate.sleep()
+        # rate.sleep()
+        print("spinning")
 
     def depth_image_callback(self, data):
         self.depth_image_CV2 = self.bridge.imgmsg_to_cv2(data, "32FC1")
@@ -115,12 +116,15 @@ class map_nav:
 rospy.init_node('navigation', anonymous=True)
 map_nav1 = map_nav()
 map_nav1.move_and_spin(2.0, -5.0)
-map_nav1.spin()
 rospy.sleep(30)
+map_nav1.spin()
+
 map_nav1.move_and_spin(-4.0, 0.0)
-map_nav1.spin()
 rospy.sleep(30)
+map_nav1.spin()
+
 map_nav1.move_and_spin(0.0, 0.0)
+rospy.sleep(30)
 map_nav1.spin()
 rospy.spin()
 cv2.destroyAllWindows()

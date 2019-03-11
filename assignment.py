@@ -29,8 +29,8 @@ class map_nav:
         goal = PoseStamped()
         goal.header.stamp = rospy.Time.now()
         goal.header.frame_id = "map"
-        goal.pose.position.x = -1.0
-        goal.pose.position.y = -1.0
+        goal.pose.position.x = 0.0
+        goal.pose.position.y = 0.0
         goal.pose.position.z = 0.0
 
 
@@ -58,8 +58,8 @@ class map_nav:
         hsv = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
         
         if 'red' in self.colours_to_find:
-            lower_red = np.array([0, 120, 100])
-            upper_red = np.array([10, 360, 360])
+            lower_red = np.array([0, 100, 100])
+            upper_red = np.array([5, 100, 360])
             red_mask = cv2.inRange(hsv, lower_red, upper_red)
             mask = red_mask
 
@@ -67,17 +67,22 @@ class map_nav:
             # then remove this colour from the list
         
         if 'blue' in self.colours_to_find:
-            lower_red = np.array([240, 120, 100])
-            upper_red = np.array([250, 360, 100])
-            blue_mask = cv2.inRange(hsv, lower_red, upper_red)
-            if 'red' in self.colours_to_find:
-                mask = red_mask + blue_mask
+            lower_blue = np.array([100, 120, 100])
+            upper_blue = np.array([120, 360, 360])
+            blue_mask = cv2.inRange(hsv, lower_blue, upper_blue)
+            mask = mask + blue_mask
         
         if 'yellow' in self.colours_to_find:
-            pass
+            lower_yellow = np.array([20, 120, 100])
+            upper_yellow = np.array([30, 360, 360])
+            yellow_mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
+            mask = mask + yellow_mask
         
         if 'green' in self.colours_to_find:
-            pass
+            lower_green = np.array([50, 120, 100])
+            upper_green = np.array([65, 360, 360])
+            green_mask = cv2.inRange(hsv, lower_green, upper_green)
+            mask = mask + green_mask
 
 
         # now apply a mask

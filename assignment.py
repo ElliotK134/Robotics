@@ -88,6 +88,41 @@ class map_nav:
 
         threshImg = cv2.bitwise_and(cv_image, cv_image, mask=mask)
 
+        # next I need to move to a pole if I see it and stop within 1 meter
+        # Moments and centroids:
+        # https://docs.opencv.org/3.1.0/dd/d49/tutorial_py_contour_features.html
+        # From page above: Contour area is given by the function cv2.contourArea() or from moments, M['m00']. 
+
+        # Get the image shape, for calculating error
+        h, w, d = cv_image.shape
+        search_top = h / 4
+        search_bot = 3*h/4 + 20
+        mask[0:search_top, 0:w] = 0
+        mask[search_bot:h, 0:w] = 0
+        M = cv2.moments(mask)
+        if M['m00'] > 0:  # If the area is greater than 0
+            # find the x and y co-ordinates of the centroid of the region
+            cx = int(M['m10']/M['m00']) 
+            cy = int(M['m01']/M['m00'])
+
+            # Calculate the error, or how much the robot needs to turn to get the object at the center of its vision
+            error = cx - w/2
+            # Publish a twist command telling the robot to move to the pole
+            twist_msg = Twist()
+            twist_msg.linear.x = 0.2
+            twist_msg.angular.z = -float(error) / 100
+
+
+            # now use the depth image to see how far the robot is from the object at the centroid calculated earlier
+            # if the robot is under 1 meter away, stop
+            cDepth = self.depth[cy, cx]
+            if cDepth < 1.0:
+                twist_msg.linear.x = 0.0
+                twist_msg.angular.z = 0.0
+                print("found")
+
+            self.twist_pub.publish(twist_msg)
+
         cv2.imshow("Segmentation", threshImg)
         cv2.waitKey(1)
 
@@ -106,7 +141,7 @@ class map_nav:
         print("spinning")
 
     def depth_image_callback(self, data):
-        self.depth_image_CV2 = self.bridge.imgmsg_to_cv2(data, "32FC1")
+        self.depth = self.bridge.imgmsg_to_cv2(data, "32FC1")
 
 
 
@@ -126,5 +161,12 @@ map_nav1.spin()
 map_nav1.move_and_spin(0.0, 0.0)
 rospy.sleep(30)
 map_nav1.spin()
+
+# I need to decide where to send co-ordinate commands to on the map
+# To do this I could use image processing on the map itself to detect the regions of the map.
+# Then I could go to each region
+# More on image processing features here:
+
+
 rospy.spin()
 cv2.destroyAllWindows()

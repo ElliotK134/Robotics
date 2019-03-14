@@ -124,7 +124,6 @@ class Search:
             M = cv2.moments(self.mask)
             if M['m00'] > 0:  # If the area is greater than 0
                 self.move_to_pole()
-                break
             self.twist_pub.publish(twist_msg)
             if self.orientation < orientation + 0.1 and self.orientation > orientation - 0.1:
                 break 
@@ -148,38 +147,45 @@ class Search:
             # find the x and y co-ordinates of the centroid of the region
             cx = int(M['m10']/M['m00']) 
             cy = int(M['m01']/M['m00'])
+            depth = self.depth[cy, cx]
+            while depth > 0.9:
+                self.mask[0:search_top, 0:w] = 0
+                self.mask[search_bot:h, 0:w] = 0
+                M = cv2.moments(self.mask)
+                if M['m00'] > 0: 
+                    cx = int(M['m10']/M['m00']) 
+                    cy = int(M['m01']/M['m00'])
+                print(depth)
+                # Calculate the error, or how much the robot needs to turn to get the object at the center of its vision
+                error = cx - w/2
+                # Publish a twist command telling the robot to move to the pole
+                twist_msg = Twist()
+                twist_msg.linear.x = 0.4
+                twist_msg.angular.z = -float(error) / 100
+                self.twist_pub.publish(twist_msg)
+                # now use the depth image to see how far the robot is from the object at the centroid calculated earlier
+                # if the robot is under 1 meter away, stop
+                depth = self.depth[cy, cx]
+                if depth < 1.0:
+                    twist_msg.linear.x = 0.0
+                    twist_msg.angular.z = 0.0
+                    # get the colour of the object found
+                    print(self.threshImg[cy, cx][0:3])
+                    if np.all(self.threshImg[cy, cx] == [0, 102, 102]):
+                        print("found yellow")
+                        self.colours_to_find = [i for i in self.colours_to_find if i != 'yellow']
+                        print(self.colours_to_find)
+                    if np.all(self.threshImg[cy, cx] == [0, 102, 0]):
+                        print("found green")
+                        self.colours_to_find = [i for i in self.colours_to_find if i != 'green']
+                        print(self.colours_to_find)
+                    if np.all(self.threshImg[cy, cx] == [0, 0, 102]):
+                        print("found red")
+                        self.colours_to_find = [i for i in self.colours_to_find if i != 'red']
+                        print(self.colours_to_find)
 
-            # Calculate the error, or how much the robot needs to turn to get the object at the center of its vision
-            error = cx - w/2
-            # Publish a twist command telling the robot to move to the pole
-            twist_msg = Twist()
-            twist_msg.linear.x = 0.2
-            twist_msg.angular.z = -float(error) / 100
-
-
-            # now use the depth image to see how far the robot is from the object at the centroid calculated earlier
-            # if the robot is under 1 meter away, stop
-            cDepth = self.depth[cy, cx]
-            if cDepth < 1.0:
-                twist_msg.linear.x = 0.0
-                twist_msg.angular.z = 0.0
-                # get the colour of the object found
-                print(self.threshImg[cy, cx][0:3])
-                if np.all(self.threshImg[cy, cx] == [0, 102, 102]):
-                    print("found yellow")
-                    self.colours_to_find = [i for i in self.colours_to_find if i != 'yellow']
-                    print(self.colours_to_find)
-                if np.all(self.threshImg[cy, cx] == [0, 102, 0]):
-                    print("found green")
-                    self.colours_to_find = [i for i in self.colours_to_find if i != 'green']
-                    print(self.colours_to_find)
-                if np.all(self.threshImg[cy, cx] == [0, 0, 102]):
-                    print("found red")
-                    self.colours_to_find = [i for i in self.colours_to_find if i != 'red']
-                    print(self.colours_to_find)
-
-            self.twist_pub.publish(twist_msg)
-
+                    self.twist_pub.publish(twist_msg)
+        self.client.cancel_goal()
     def odom_cb(self, data):
         self.orientation = data.pose.pose.orientation.z
 
@@ -193,7 +199,7 @@ if __name__ == "__main__":
 
     while search.colours_to_find:
         
-        search.move_client(0,0)
+        search.move_client(-4,0)
         search.spin()
         search.move_client(2,-5)
         search.spin()

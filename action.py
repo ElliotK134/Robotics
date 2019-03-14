@@ -9,6 +9,7 @@ import numpy as np
 from std_msgs.msg import String
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
+from nav_msgs.msg import Odometry
 
 
 class Search:
@@ -19,20 +20,19 @@ class Search:
         # this will publish map navigation commands
         self.client = simple_action_client.SimpleActionClient("move_base", move_base_msgs.msg.MoveBaseAction)
         # this will publish twist commands to make the robot spin or stop
-        self.twist_pub = rospy.Publisher('mobile_base/commands/velocity', Twist, queue_size=10)
+        self.twist_pub = rospy.Publisher('mobile_base/commands/velocity', Twist, queue_size=40)
         cv2.startWindowThread()
         self.bridge = CvBridge()
         self.image_colour = rospy.Subscriber("/camera/rgb/image_raw", Image, self.callback)
         self.image_depth = rospy.Subscriber('/camera/depth/image_raw', Image, self.depth_image_callback)
         self.colours_to_find = ['red', 'green', 'yellow', 'blue']
-
-
+        self.goal = move_base_msgs.msg.MoveBaseGoal()
+        self.odom = rospy.Subscriber('odom', Odometry, self.odom_cb)
+        self.orientation = 0
 
     def move_client(self, x,y):
 
         self.client.wait_for_server()
-
-        self.goal = move_base_msgs.msg.MoveBaseGoal()
 
         self.goal.target_pose.header.frame_id = "map"
         self.goal.target_pose.header.stamp = rospy.Time.now()
@@ -40,7 +40,9 @@ class Search:
         self.goal.target_pose.pose.position.y = y
         self.goal.target_pose.pose.orientation.w = 1
 
-        self.client.send_goal_and_wait(goal)
+        print("goal published")
+        self.client.send_goal_and_wait(self.goal)
+        print("goal completed")
 
 
     def callback(self, data):
@@ -89,11 +91,53 @@ class Search:
 
         # now apply a mask
 
-        threshImg = cv2.bitwise_and(self.cv_image, self.cv_image, mask=self.mask)
-        cv2.imshow("Segmentation",threshImg)
+        self.threshImg = cv2.bitwise_and(self.cv_image, self.cv_image, mask=self.mask)
+        cv2.imshow("Segmentation",self.threshImg)
         cv2.waitKey(1)
 
-         # Get the image shape, for calculating error
+    def depth_image_callback(self, data):
+        self.depth = self.bridge.imgmsg_to_cv2(data, "32FC1")
+
+    def spin(self):
+        # publish an empty goal so nothing happens with action client in the mean time
+        self.client.send_goal_and_wait(move_base_msgs.msg.MoveBaseGoal())
+        rate = rospy.Rate(40)
+        twist_msg = Twist()
+        twist_msg.linear.x = 0.0
+        twist_msg.linear.y = 0.0
+        twist_msg.linear.z = 1
+        twist_msg.angular.x = 0.0
+        twist_msg.angular.y = 0.0
+        twist_msg.angular.z = 3
+        orientation = self.orientation
+        self.twist_pub.publish(twist_msg)
+        twist_msg.angular.z = 0.5
+        print(orientation)
+        rospy.sleep(1)
+        print(self.orientation)
+        while self.orientation != (orientation + 0.2) or self.orientation != (orientation - 0.2):
+            h, w, d = self.cv_image.shape
+            search_top = h / 4
+            search_bot = 3*h/4 + 20
+            self.mask[0:search_top, 0:w] = 0
+            self.mask[search_bot:h, 0:w] = 0
+            M = cv2.moments(self.mask)
+            if M['m00'] > 0:  # If the area is greater than 0
+                self.move_to_pole()
+                break
+            self.twist_pub.publish(twist_msg)
+            if self.orientation < orientation + 0.1 and self.orientation > orientation - 0.1:
+                break 
+            
+
+
+
+
+        
+    def move_to_pole(self):
+        print("IN FUNCTION")
+        # publish an empty goal so nothing happens with action client in the mean time
+        self.client.send_goal_and_wait(move_base_msgs.msg.MoveBaseGoal())
         h, w, d = self.cv_image.shape
         search_top = h / 4
         search_bot = 3*h/4 + 20
@@ -107,9 +151,6 @@ class Search:
 
             # Calculate the error, or how much the robot needs to turn to get the object at the center of its vision
             error = cx - w/2
-            # cancel the goal
-            last_goal = self.goal
-            self.client.cancel_goal()
             # Publish a twist command telling the robot to move to the pole
             twist_msg = Twist()
             twist_msg.linear.x = 0.2
@@ -123,51 +164,39 @@ class Search:
                 twist_msg.linear.x = 0.0
                 twist_msg.angular.z = 0.0
                 # get the colour of the object found
-                print(threshImg[cy, cx][0:3])
-                if np.all(threshImg[cy, cx] == [0, 102, 102]):
+                print(self.threshImg[cy, cx][0:3])
+                if np.all(self.threshImg[cy, cx] == [0, 102, 102]):
                     print("found yellow")
                     self.colours_to_find = [i for i in self.colours_to_find if i != 'yellow']
                     print(self.colours_to_find)
-                if np.all(threshImg[cy, cx] == [0, 102, 0]):
+                if np.all(self.threshImg[cy, cx] == [0, 102, 0]):
                     print("found green")
                     self.colours_to_find = [i for i in self.colours_to_find if i != 'green']
                     print(self.colours_to_find)
-                if np.all(threshImg[cy, cx] == [0, 0, 102]):
+                if np.all(self.threshImg[cy, cx] == [0, 0, 102]):
                     print("found red")
                     self.colours_to_find = [i for i in self.colours_to_find if i != 'red']
                     print(self.colours_to_find)
 
             self.twist_pub.publish(twist_msg)
-            # republish the old goal
-            self.client.send_goal(last_goal)
+
+    def odom_cb(self, data):
+        self.orientation = data.pose.pose.orientation.z
+
+
+           
+
+if __name__ == "__main__":
+    rospy.init_node('move', anonymous=True)
+
+    search = Search()
+
+    while search.colours_to_find:
         
+        search.move_client(0,0)
+        search.spin()
+        search.move_client(2,-5)
+        search.spin()
 
-
-    def depth_image_callback(self, data):
-        self.depth = self.bridge.imgmsg_to_cv2(data, "32FC1")
-
-    def spin(self):
-        rate = rospy.Rate(20)
-        twist_msg = Twist()
-        twist_msg.linear.x = 0.0
-        twist_msg.linear.y = 0.0
-        twist_msg.linear.z = 4
-        twist_msg.angular.x = 0.0
-        twist_msg.angular.y = 0.0
-        twist_msg.angular.z = 4
-        rospy.loginfo(twist_msg) # logs to terminal screen, but also to rosout and node log file
-        self.twist_pub.publish(twist_msg)
-        # rate.sleep()
-        print("spinning")
-
-rospy.init_node('move')
-search = Search()
-
-while search.colours_to_find:
-    search.move_client(-4,5)
-    search.move_client(-3,-3)
-    search.move_client(-4,0)
-    search.move_client(0,0)
-    search.move_client(0,5)
-    search.move_client(2,-5)
-    search.move_client(0,0)
+    rospy.spin()
+    

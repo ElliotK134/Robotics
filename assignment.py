@@ -1,3 +1,5 @@
+
+  
 import rospy
 from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import Float32
@@ -46,10 +48,7 @@ class map_nav:
 
     def callback(self, data):
         cv2.namedWindow("Segmentation", 1)
-        try:
-            self.cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
-        except CvBridgeError, e:
-            print e
+        self.cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
 
         hsv = cv2.cvtColor(self.cv_image, cv2.COLOR_BGR2HSV)
 
@@ -97,29 +96,6 @@ class map_nav:
         cv2.imshow("Segmentation",threshImg)
         cv2.waitKey(1)
 
-
-
-    def spin(self):
-        rate = rospy.Rate(20)
-        twist_msg = Twist()
-        twist_msg.linear.x = 0.0
-        twist_msg.linear.y = 0.0
-        twist_msg.linear.z = 4
-        twist_msg.angular.x = 0.0
-        twist_msg.angular.y = 0.0
-        twist_msg.angular.z = 4
-        rospy.loginfo(twist_msg) # logs to terminal screen, but also to rosout and node log file
-        self.twist_pub.publish(twist_msg)
-        # rate.sleep()
-        print("spinning")
-
-
-        # next I need to move to a pole if I see it and stop within 1 meter
-        # Moments and centroids:
-        # https://docs.opencv.org/3.1.0/dd/d49/tutorial_py_contour_features.html
-        # From page above: Contour area is given by the function cv2.contourArea() or from moments, M['m00']. 
-
-        # Get the image shape, for calculating error
         h, w, d = self.cv_image.shape
         search_top = h / 4
         search_bot = 3*h/4 + 20
@@ -161,6 +137,33 @@ class map_nav:
                     print(self.colours_to_find)
 
             self.twist_pub.publish(twist_msg)
+
+        
+
+
+
+    def spin(self):
+        rate = rospy.Rate(20)
+        twist_msg = Twist()
+        twist_msg.linear.x = 0.0
+        twist_msg.linear.y = 0.0
+        twist_msg.linear.z = 4
+        twist_msg.angular.x = 0.0
+        twist_msg.angular.y = 0.0
+        twist_msg.angular.z = 4
+        rospy.loginfo(twist_msg) # logs to terminal screen, but also to rosout and node log file
+        self.twist_pub.publish(twist_msg)
+        # rate.sleep()
+        print("spinning")
+
+
+        # next I need to move to a pole if I see it and stop within 1 meter
+        # Moments and centroids:
+        # https://docs.opencv.org/3.1.0/dd/d49/tutorial_py_contour_features.html
+        # From page above: Contour area is given by the function cv2.contourArea() or from moments, M['m00']. 
+
+        # Get the image shape, for calculating error
+
         
 
 

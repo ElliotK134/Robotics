@@ -91,6 +91,40 @@ class Search:
         cv2.imshow("Segmentation", self.threshImg)
         cv2.waitKey(1)
 
+        h, w, d = self.cv_image.shape
+        search_top = h / 4
+        search_bot = 3 * h / 4 + 20
+        self.mask[0:search_top, 0:w] = 0
+        self.mask[search_bot:h, 0:w] = 0
+        M = cv2.moments(self.mask)
+        if M['m00'] > 0:  # If the area is greater than 0
+            # find the x and y co-ordinates of the centroid of the region
+            cx = int(M['m10'] / M['m00'])
+            cy = int(M['m01'] / M['m00'])
+
+            # now use the depth image to see how far the robot is from the object at the centroid calculated earlier
+            # if the robot is under 1 meter away, stop
+            depth = self.depth[cy, cx]
+            if depth < 1.0:
+                twist_msg = Twist()
+                twist_msg.linear.x = 0.0
+                twist_msg.angular.z = 0.0
+                # get the colour of the object found
+                print(self.threshImg[cy, cx][0:3])
+                if np.all(self.threshImg[cy, cx] == [0, 102, 102]):
+                    print("found yellow")
+                    self.colours_to_find = [i for i in self.colours_to_find if i != 'yellow']
+                    print(self.colours_to_find)
+                if np.all(self.threshImg[cy, cx] == [0, 102, 0]):
+                    print("found green")
+                    self.colours_to_find = [i for i in self.colours_to_find if i != 'green']
+                    print(self.colours_to_find)
+                if np.all(self.threshImg[cy, cx] == [0, 0, 102]):
+                    print("found red")
+                    self.colours_to_find = [i for i in self.colours_to_find if i != 'red']
+                    print(self.colours_to_find)
+                self.twist_pub.publish(twist_msg)
+
     def depth_image_callback(self, data):
         self.depth = self.bridge.imgmsg_to_cv2(data, "32FC1")
 
@@ -157,19 +191,22 @@ class Search:
                     theta = -math.pi / 2 - self.orientation
                 xdistance = depth * math.cos(theta)
                 ydistance = depth * math.sin(theta)
+                print(self.orientation)
+                print(depth)
+                print(theta)
                 # now check if the x or y distance needs to be negative
                 if self.orientation >= 0 and self.orientation <= math.pi / 2:
-                    print(self.posx + xdistance, self.posy + ydistance)
-                    self.move_client(self.posx + xdistance, self.posy + ydistance)
+                    print(int(self.posx + xdistance), int(self.posy + ydistance))
+                    self.move_client(int(self.posx + xdistance), int(self.posy + ydistance))
                 if self.orientation >= math.pi / 2:
-                    self.move_client(-1 * (self.posx + xdistance), self.posy + ydistance)
-                    print(-1 * (self.posx + xdistance), self.posy + ydistance)
+                    self.move_client(int(-1 * (self.posx + xdistance)), int(self.posy + ydistance))
+                    print(int(-1 * (self.posx + xdistance)), int(self.posy + ydistance))
                 if self.orientation >= -math.pi and self.orientation <= -math.pi / 2:
-                    self.move_client(-1 * (self.posx + xdistance), -1 * (self.posy + ydistance))
-                    print(-1 * (self.posx + xdistance), -1 * (self.posy + ydistance))
+                    self.move_client(int(-1 * (self.posx + xdistance)), int(-1 * (self.posy + ydistance)))
+                    print(int(-1 * (self.posx + xdistance)), int(-1 * (self.posy + ydistance)))
                 if self.orientation >= -math.pi / 2 and self.orientation < 0:
-                    self.move_client(self.posx + xdistance, -1 * (self.posy + ydistance))
-                    print(self.posx + xdistance, -1 * (self.posy + ydistance))
+                    self.move_client(int(self.posx + xdistance), int(-1 * (self.posy + ydistance)))
+                    print(int(self.posx + xdistance), int(-1 * (self.posy + ydistance)))
 
         print("exiting function")
 
@@ -191,10 +228,6 @@ if __name__ == "__main__":
 
     while search.colours_to_find:
         print "publishing goal"
-        search.move_client(0, 0)
-        search.spin()
-        search.move_client(-2, -5)
-        search.spin()
         search.move_client(1, -5)
         search.spin()
         search.move_client(-4, 0)

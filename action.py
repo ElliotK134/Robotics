@@ -9,6 +9,7 @@ from cv_bridge import CvBridge, CvBridgeError
 from nav_msgs.msg import Odometry
 import math
 from tf.transformations import euler_from_quaternion
+import time
 
 
 class Search:
@@ -132,7 +133,6 @@ class Search:
     def spin_and_search(self):
         # publish an empty goal so nothing happens with action client in the mean time
         # self.client.send_goal_and_wait(move_base_msgs.msg.MoveBaseGoal())
-        rate = rospy.Rate(40)
         twist_msg = Twist()
         twist_msg.linear.x = 0.0
         twist_msg.linear.y = 0.0
@@ -140,15 +140,9 @@ class Search:
         twist_msg.angular.x = 0.0
         twist_msg.angular.y = 0.0
         twist_msg.angular.z = 1
-        orientation = self.orientation
-        self.twist_pub.publish(twist_msg)
-        twist_msg.angular.z = 1
-        print(orientation)
-        rospy.sleep(1)
-        print(self.orientation)
-        if self.orientation < orientation + 0.05 and self.orientation > orientation - 0.05:
-            print("statement true")
-        while self.orientation < orientation + 0.05 and self.orientation > orientation - 0.05:
+        t = int(time.time())
+        print("spinning")
+        while int(time.time()) < t + 10:
             h, w, d = self.cv_image.shape
             search_top = h / 4
             search_bot = 3 * h / 4 + 20
@@ -167,12 +161,10 @@ class Search:
                     self.move_to_pole()
                 break
             self.twist_pub.publish(twist_msg)
-            print(self.orientation)
 
     def spin(self):
         # publish an empty goal so nothing happens with action client in the mean time
         # self.client.send_goal_and_wait(move_base_msgs.msg.MoveBaseGoal())
-        rate = rospy.Rate(40)
         twist_msg = Twist()
         twist_msg.linear.x = 0.0
         twist_msg.linear.y = 0.0
@@ -180,13 +172,8 @@ class Search:
         twist_msg.angular.x = 0.0
         twist_msg.angular.y = 0.0
         twist_msg.angular.z = 3
-        orientation = self.orientation
-        self.twist_pub.publish(twist_msg)
-        twist_msg.angular.z = 1
-        print(orientation)
-        rospy.sleep(1)
-        print(self.orientation)
-        while self.orientation < orientation + 0.05 and self.orientation > orientation - 0.05:
+        t = int(time.time())
+        while int(time.time()) < t + 10:
             self.twist_pub.publish(twist_msg)
 
     def move_to_pole(self):
@@ -255,6 +242,8 @@ if __name__ == "__main__":
     search = Search()
 
     while search.colours_to_find:
+        search.move_client(2, -2)
+        search.spin_and_search()
         search.move_client(1, -5)
         search.spin_and_search()
         search.move_client(-4, 0)
@@ -265,4 +254,4 @@ if __name__ == "__main__":
         search.spin_and_search()
 
 
-rospy.spin_and_search()
+rospy.spin()

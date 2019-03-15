@@ -124,11 +124,12 @@ class Search:
                     self.colours_to_find = [i for i in self.colours_to_find if i != 'red']
                     print(self.colours_to_find)
                 self.twist_pub.publish(twist_msg)
+                rospy.sleep(2)
 
     def depth_image_callback(self, data):
         self.depth = self.bridge.imgmsg_to_cv2(data, "32FC1")
 
-    def spin(self):
+    def spin_and_search(self):
         # publish an empty goal so nothing happens with action client in the mean time
         # self.client.send_goal_and_wait(move_base_msgs.msg.MoveBaseGoal())
         rate = rospy.Rate(40)
@@ -141,7 +142,7 @@ class Search:
         twist_msg.angular.z = 3
         orientation = self.orientation
         self.twist_pub.publish(twist_msg)
-        twist_msg.angular.z = 0.5
+        twist_msg.angular.z = 1
         print(orientation)
         rospy.sleep(1)
         print(self.orientation)
@@ -157,6 +158,29 @@ class Search:
                 self.twist_pub.publish(twist_msg)
                 self.move_to_pole()
                 break
+            self.twist_pub.publish(twist_msg)
+            if self.orientation < orientation + 0.05 and self.orientation > orientation - 0.05:
+                print(self.orientation)
+                break
+
+    def spin(self):
+        # publish an empty goal so nothing happens with action client in the mean time
+        # self.client.send_goal_and_wait(move_base_msgs.msg.MoveBaseGoal())
+        rate = rospy.Rate(40)
+        twist_msg = Twist()
+        twist_msg.linear.x = 0.0
+        twist_msg.linear.y = 0.0
+        twist_msg.linear.z = 1
+        twist_msg.angular.x = 0.0
+        twist_msg.angular.y = 0.0
+        twist_msg.angular.z = 3
+        orientation = self.orientation
+        self.twist_pub.publish(twist_msg)
+        twist_msg.angular.z = 1
+        print(orientation)
+        rospy.sleep(1)
+        print(self.orientation)
+        while self.orientation != (orientation + 0.2) or self.orientation != (orientation - 0.2):
             self.twist_pub.publish(twist_msg)
             if self.orientation < orientation + 0.05 and self.orientation > orientation - 0.05:
                 print(self.orientation)
@@ -199,15 +223,16 @@ class Search:
                     print(int(self.posx + xdistance), int(self.posy + ydistance))
                     self.move_client(int(self.posx + xdistance), int(self.posy + ydistance))
                 if self.orientation >= math.pi / 2:
-                    self.move_client(int(-1 * (self.posx + xdistance)), int(self.posy + ydistance))
                     print(int(-1 * (self.posx + xdistance)), int(self.posy + ydistance))
+                    self.move_client(int(-1 * (self.posx + xdistance)), int(self.posy + ydistance))
                 if self.orientation >= -math.pi and self.orientation <= -math.pi / 2:
-                    self.move_client(int(-1 * (self.posx + xdistance)), int(-1 * (self.posy + ydistance)))
                     print(int(-1 * (self.posx + xdistance)), int(-1 * (self.posy + ydistance)))
+                    self.move_client(int(-1 * (self.posx + xdistance)), int(-1 * (self.posy + ydistance)))
                 if self.orientation >= -math.pi / 2 and self.orientation < 0:
-                    self.move_client(int(self.posx + xdistance), int(-1 * (self.posy + ydistance)))
                     print(int(self.posx + xdistance), int(-1 * (self.posy + ydistance)))
-
+                    self.move_client(int(self.posx + xdistance), int(-1 * (self.posy + ydistance)))
+        # spin incase the robot didn't tag the pole
+        self.spin()
         print("exiting function")
 
     def odom_cb(self, data):
@@ -229,9 +254,9 @@ if __name__ == "__main__":
     while search.colours_to_find:
         print "publishing goal"
         search.move_client(1, -5)
-        search.spin()
+        search.spin_and_search()
         search.move_client(-4, 0)
-        search.spin()
+        search.spin_and_search()
 
 
-rospy.spin()
+rospy.spin_and_search()

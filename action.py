@@ -1,16 +1,14 @@
 import rospy
 from actionlib import simple_action_client
 import move_base_msgs.msg
-from geometry_msgs.msg import PoseStamped
-from std_msgs.msg import Float32
 from geometry_msgs.msg import Twist
 import cv2
 import numpy as np
-from std_msgs.msg import String
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 from nav_msgs.msg import Odometry
 import math
+from tf.transformations import euler_from_quaternion
 
 
 class Search:
@@ -139,19 +137,51 @@ class Search:
         self.mask[0:search_top, 0:w] = 0
         self.mask[search_bot:h, 0:w] = 0
         M = cv2.moments(self.mask)
-        print(M['m00'])
+        # print(M['m00'])
         if M['m00'] > 5000:  # If the area is greater than 0
             # find the x and y co-ordinates of the centroid of the region
             cx = int(M['m10'] / M['m00'])
             cy = int(M['m01'] / M['m00'])
             # try to send a move command to the pole
-            # first find the co-ordinates using trigonomety
+            # first find the depth
+            depth = self.depth[cy, cx]
+            if not depth == 'nan':
+                # now use the depth and trigonometry to find the x and y distance
+                if self.orientation >= 0 and self.orientation <= math.pi / 2:
+                    theta = self.orientation
+                if self.orientation >= math.pi / 2:
+                    theta = math.pi - self.orientation
+                if self.orientation >= -math.pi and self.orientation <= -math.pi / 2:
+                    theta = -math.pi - self.orientation
+                if self.orientation >= -math.pi / 2 and self.orientation < 0:
+                    theta = -math.pi / 2 - self.orientation
+                xdistance = depth * math.cos(theta)
+                ydistance = depth * math.sin(theta)
+                # now check if the x or y distance needs to be negative
+                if self.orientation >= 0 and self.orientation <= math.pi / 2:
+                    print(self.posx + xdistance, self.posy + ydistance)
+                    self.move_client(self.posx + xdistance, self.posy + ydistance)
+                if self.orientation >= math.pi / 2:
+                    self.move_client(-1 * (self.posx + xdistance), self.posy + ydistance)
+                    print(-1 * (self.posx + xdistance), self.posy + ydistance)
+                if self.orientation >= -math.pi and self.orientation <= -math.pi / 2:
+                    self.move_client(-1 * (self.posx + xdistance), -1 * (self.posy + ydistance))
+                    print(-1 * (self.posx + xdistance), -1 * (self.posy + ydistance))
+                if self.orientation >= -math.pi / 2 and self.orientation < 0:
+                    self.move_client(self.posx + xdistance, -1 * (self.posy + ydistance))
+                    print(self.posx + xdistance, -1 * (self.posy + ydistance))
+
         print("exiting function")
 
     def odom_cb(self, data):
-        self.orientation = data.pose.pose.orientation.z
+        # save pos x and y in the class
         self.posx = data.pose.pose.position.x
         self.posy = data.pose.pose.position.y
+        # convert orientation to a euler angle and save it
+        orientation_list = [data.pose.pose.orientation.x, data.pose.pose.orientation.y, data.pose.pose.orientation.z, data.pose.pose.orientation.w]
+        (x, y, z) = euler_from_quaternion(orientation_list)
+        # degrees = z * 180 / math.pi
+        self.orientation = z
 
 
 if __name__ == "__main__":
@@ -160,11 +190,15 @@ if __name__ == "__main__":
     search = Search()
 
     while search.colours_to_find:
-
         print "publishing goal"
-        search.move_client(-4, 5)
+        search.move_client(0, 0)
+        search.spin()
+        search.move_client(-2, -5)
+        search.spin()
+        search.move_client(1, -5)
         search.spin()
         search.move_client(-4, 0)
         search.spin()
+
 
 rospy.spin()

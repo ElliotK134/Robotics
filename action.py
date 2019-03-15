@@ -139,14 +139,16 @@ class Search:
         twist_msg.linear.z = 1
         twist_msg.angular.x = 0.0
         twist_msg.angular.y = 0.0
-        twist_msg.angular.z = 3
+        twist_msg.angular.z = 1
         orientation = self.orientation
         self.twist_pub.publish(twist_msg)
         twist_msg.angular.z = 1
         print(orientation)
         rospy.sleep(1)
         print(self.orientation)
-        while self.orientation != (orientation + 0.2) or self.orientation != (orientation - 0.2):
+        if self.orientation < orientation + 0.05 and self.orientation > orientation - 0.05:
+            print("statement true")
+        while self.orientation < orientation + 0.05 and self.orientation > orientation - 0.05:
             h, w, d = self.cv_image.shape
             search_top = h / 4
             search_bot = 3 * h / 4 + 20
@@ -156,12 +158,16 @@ class Search:
             if M['m00'] > 5000:  # If the area is greater than 0
                 twist_msg.angular.z = 0
                 self.twist_pub.publish(twist_msg)
-                self.move_to_pole()
+                cx = int(M['m10'] / M['m00'])
+                cy = int(M['m01'] / M['m00'])
+                # try to send a move command to the pole
+                # first find the depth
+                depth = self.depth[cy, cx]
+                if not math.isnan(depth):
+                    self.move_to_pole()
                 break
             self.twist_pub.publish(twist_msg)
-            if self.orientation < orientation + 0.05 and self.orientation > orientation - 0.05:
-                print(self.orientation)
-                break
+            print(self.orientation)
 
     def spin(self):
         # publish an empty goal so nothing happens with action client in the mean time
@@ -180,11 +186,8 @@ class Search:
         print(orientation)
         rospy.sleep(1)
         print(self.orientation)
-        while self.orientation != (orientation + 0.2) or self.orientation != (orientation - 0.2):
+        while self.orientation < orientation + 0.05 and self.orientation > orientation - 0.05:
             self.twist_pub.publish(twist_msg)
-            if self.orientation < orientation + 0.05 and self.orientation > orientation - 0.05:
-                print(self.orientation)
-                break
 
     def move_to_pole(self):
         print("IN FUNCTION")
@@ -203,7 +206,7 @@ class Search:
             # try to send a move command to the pole
             # first find the depth
             depth = self.depth[cy, cx]
-            if not depth == 'nan':
+            if not math.isnan(depth):
                 # now use the depth and trigonometry to find the x and y distance
                 if self.orientation >= 0 and self.orientation <= math.pi / 2:
                     theta = self.orientation
@@ -232,7 +235,7 @@ class Search:
                     print(int(self.posx + xdistance), int(-1 * (self.posy + ydistance)))
                     self.move_client(int(self.posx + xdistance), int(-1 * (self.posy + ydistance)))
         # spin incase the robot didn't tag the pole
-        self.spin()
+                self.spin()
         print("exiting function")
 
     def odom_cb(self, data):
@@ -252,10 +255,13 @@ if __name__ == "__main__":
     search = Search()
 
     while search.colours_to_find:
-        print "publishing goal"
         search.move_client(1, -5)
         search.spin_and_search()
         search.move_client(-4, 0)
+        search.spin_and_search()
+        search.move_client(2, 4)
+        search.spin_and_search()
+        search.move_client(3, 0)
         search.spin_and_search()
 
 

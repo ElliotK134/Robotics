@@ -133,6 +133,7 @@ class Search:
     def spin_and_search(self):
         # publish an empty goal so nothing happens with action client in the mean time
         # self.client.send_goal_and_wait(move_base_msgs.msg.MoveBaseGoal())
+        self.client.cancel_all_goals()
         twist_msg = Twist()
         twist_msg.linear.x = 0.0
         twist_msg.linear.y = 0.0
@@ -171,7 +172,7 @@ class Search:
         twist_msg.linear.z = 1
         twist_msg.angular.x = 0.0
         twist_msg.angular.y = 0.0
-        twist_msg.angular.z = 3
+        twist_msg.angular.z = 1
         t = int(time.time())
         while int(time.time()) < t + 10:
             self.twist_pub.publish(twist_msg)

@@ -32,8 +32,12 @@ class Search:
         self.orientation = 0
         self.mapsub = rospy.Subscriber('map', OccupancyGrid, self.map_cb)
         self.map = []
+        self.x = 0
+        self.y = 0
 
     def move_client(self, x, y):
+        self.x = x
+        self.y = y
 
         self.client.wait_for_server()
 
@@ -49,7 +53,27 @@ class Search:
         print("goal completed")
 
     def done_cb(self, data, result):
-        print("data:", data, "result:", result)
+        print("data:", data)
+        if data == 4:
+            # if the goal fails, use the self.x and y to get the last goal
+            # then move it slightly and re send
+            newx = self.x + 0.5
+            newy = self.y + 0.5
+            # check that the new co ordinates are not out of bounds
+            if self.x > 4:
+                self.x = 4
+            if self.y > 5:
+                self.y = 5
+            if self.x < -4:
+                self.x = -4
+            if self.y < -5:
+                self.y = -5
+            # re send the goal
+            self.move_client(newx, newy)
+            # spin to look for pole
+            print("sent new goal to", newx, newy)
+            self.spin()
+            print("exiting done_cb")
 
     def callback(self, data):
         cv2.namedWindow("Segmentation", 1)
@@ -209,7 +233,7 @@ class Search:
             twist_msg = Twist()
             twist_msg.linear.x = 0.2
             twist_msg.angular.z = -float(error) / 100
-            self.twist_pub.publish(twist_msg)
+            # self.twist_pub.publish(twist_msg)
             rospy.sleep(2)
             # try to send a move command to the pole
             # first find the depth
@@ -234,36 +258,52 @@ class Search:
                     xcor = round(self.posx + xdistance)
                     ycor = round(self.posy + ydistance)
                     if xcor > 4:
-                        xcor = 4.5
+                        xcor = 4
                     if ycor > 5:
-                        ycor = 5.5
+                        ycor = 5
+                    if xcor < -4:
+                        xcor = -4
+                    if ycor < -5:
+                        ycor = -5
                     print(xcor, ycor)
                     self.move_client(xcor, ycor)
                 if self.orientation >= math.pi / 2:
                     xcor = round(self.posx + -1 * xdistance)
                     ycor = round(self.posy + ydistance)
-                    if xcor < -4:
-                        xcor = -4.5
+                    if xcor > 4:
+                        xcor = 4
                     if ycor > 5:
-                        ycor = 5.5
+                        ycor = 5
+                    if xcor < -4:
+                        xcor = -4
+                    if ycor < -5:
+                        ycor = -5
                     print(xcor, ycor)
                     self.move_client(xcor, ycor)
                 if self.orientation >= -math.pi and self.orientation <= -math.pi / 2:
                     xcor = round(self.posx + -1 * xdistance)
                     ycor = round(self.posy + -1 * ydistance)
+                    if xcor > 4:
+                        xcor = 4
+                    if ycor > 5:
+                        ycor = 5
                     if xcor < -4:
-                        xcor = -4.5
+                        xcor = -4
                     if ycor < -5:
-                        ycor = -5.5
+                        ycor = -5
                     print(xcor, ycor)
                     self.move_client(xcor, ycor)
                 if self.orientation >= -math.pi / 2 and self.orientation < 0:
                     xcor = round(self.posx + xdistance)
                     ycor = round(self.posy + -1 * ydistance)
                     if xcor > 4:
-                        xcor = 4.5
+                        xcor = 4
+                    if ycor > 5:
+                        ycor = 5
+                    if xcor < -4:
+                        xcor = -4
                     if ycor < -5:
-                        ycor = -5.5
+                        ycor = -5
                     print(xcor, ycor)
                     self.move_client(xcor, ycor)
         # spin incase the robot didn't tag the pole
@@ -293,9 +333,9 @@ if __name__ == "__main__":
     # sleep to give callbacks a chance to initialise
     rospy.sleep(2)
     while search.colours_to_find:
-        search.move_client(2, 4)
+        search.move_client(1, 4)
         search.spin_and_search()
-        search.move_client(0, 0)
+        search.move_client(-1, 5)
         search.spin_and_search()
         search.move_client(1, -5)
         search.spin_and_search()

@@ -10,6 +10,7 @@ from nav_msgs.msg import Odometry
 import math
 from tf.transformations import euler_from_quaternion
 import time
+from nav_msgs.msg import OccupancyGrid
 
 
 class Search:
@@ -29,6 +30,8 @@ class Search:
         self.goal = move_base_msgs.msg.MoveBaseGoal()
         self.odom = rospy.Subscriber('odom', Odometry, self.odom_cb)
         self.orientation = 0
+        self.mapsub = rospy.Subscriber('map', OccupancyGrid, self.map_cb)
+        self.map = []
 
     def move_client(self, x, y):
 
@@ -41,8 +44,12 @@ class Search:
         self.goal.target_pose.pose.orientation.w = 1
 
         print("goal published")
-        self.client.send_goal_and_wait(self.goal)
+        self.client.send_goal(self.goal, done_cb=self.done_cb)
+        self.client.wait_for_result()
         print("goal completed")
+
+    def done_cb(self, data, result):
+        print("data:", data, "result:", result)
 
     def callback(self, data):
         cv2.namedWindow("Segmentation", 1)
@@ -124,6 +131,10 @@ class Search:
                     print("found red")
                     self.colours_to_find = [i for i in self.colours_to_find if i != 'red']
                     print(self.colours_to_find)
+                if np.all(self.threshImg[cy, cx] == [102, 0, 0]):
+                    print("found blue")
+                    self.colours_to_find = [i for i in self.colours_to_find if i != 'blue']
+                    print(self.colours_to_find)
                 self.twist_pub.publish(twist_msg)
                 rospy.sleep(2)
 
@@ -191,6 +202,15 @@ class Search:
             # find the x and y co-ordinates of the centroid of the region
             cx = int(M['m10'] / M['m00'])
             cy = int(M['m01'] / M['m00'])
+            # get the pole at the center of the robot's vision
+            error = cx - w / 2
+            print(error)
+            # Publish a twist command telling the robot to move to the pole
+            twist_msg = Twist()
+            twist_msg.linear.x = 0.2
+            twist_msg.angular.z = -float(error) / 100
+            self.twist_pub.publish(twist_msg)
+            rospy.sleep(2)
             # try to send a move command to the pole
             # first find the depth
             depth = self.depth[cy, cx]
@@ -211,17 +231,41 @@ class Search:
                 print(theta)
                 # now check if the x or y distance needs to be negative
                 if self.orientation >= 0 and self.orientation <= math.pi / 2:
-                    print(int(self.posx + xdistance), int(self.posy + ydistance))
-                    self.move_client(int(self.posx + xdistance), int(self.posy + ydistance))
+                    xcor = round(self.posx + xdistance)
+                    ycor = round(self.posy + ydistance)
+                    if xcor > 4:
+                        xcor = 4.5
+                    if ycor > 5:
+                        ycor = 5.5
+                    print(xcor, ycor)
+                    self.move_client(xcor, ycor)
                 if self.orientation >= math.pi / 2:
-                    print(int(-1 * (self.posx + xdistance)), int(self.posy + ydistance))
-                    self.move_client(int(-1 * (self.posx + xdistance)), int(self.posy + ydistance))
+                    xcor = round(self.posx + -1 * xdistance)
+                    ycor = round(self.posy + ydistance)
+                    if xcor < -4:
+                        xcor = -4.5
+                    if ycor > 5:
+                        ycor = 5.5
+                    print(xcor, ycor)
+                    self.move_client(xcor, ycor)
                 if self.orientation >= -math.pi and self.orientation <= -math.pi / 2:
-                    print(int(-1 * (self.posx + xdistance)), int(-1 * (self.posy + ydistance)))
-                    self.move_client(int(-1 * (self.posx + xdistance)), int(-1 * (self.posy + ydistance)))
+                    xcor = round(self.posx + -1 * xdistance)
+                    ycor = round(self.posy + -1 * ydistance)
+                    if xcor < -4:
+                        xcor = -4.5
+                    if ycor < -5:
+                        ycor = -5.5
+                    print(xcor, ycor)
+                    self.move_client(xcor, ycor)
                 if self.orientation >= -math.pi / 2 and self.orientation < 0:
-                    print(int(self.posx + xdistance), int(-1 * (self.posy + ydistance)))
-                    self.move_client(int(self.posx + xdistance), int(-1 * (self.posy + ydistance)))
+                    xcor = round(self.posx + xdistance)
+                    ycor = round(self.posy + -1 * ydistance)
+                    if xcor > 4:
+                        xcor = 4.5
+                    if ycor < -5:
+                        ycor = -5.5
+                    print(xcor, ycor)
+                    self.move_client(xcor, ycor)
         # spin incase the robot didn't tag the pole
                 self.spin()
         print("exiting function")
@@ -236,23 +280,28 @@ class Search:
         # degrees = z * 180 / math.pi
         self.orientation = z
 
+    def map_cb(self, data):
+        self.map = np.array(data)
+        print type(data)
+        print self.map.shape
+
 
 if __name__ == "__main__":
     rospy.init_node('move', anonymous=True)
 
     search = Search()
-
+    # sleep to give callbacks a chance to initialise
+    rospy.sleep(2)
     while search.colours_to_find:
-        search.move_client(2, -2)
+        search.move_client(2, 4)
+        search.spin_and_search()
+        search.move_client(0, 0)
         search.spin_and_search()
         search.move_client(1, -5)
         search.spin_and_search()
         search.move_client(-4, 0)
         search.spin_and_search()
-        search.move_client(2, 4)
-        search.spin_and_search()
         search.move_client(3, 0)
         search.spin_and_search()
 
-
-rospy.spin()
+    rospy.spin()

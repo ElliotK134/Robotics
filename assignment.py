@@ -1,5 +1,5 @@
 
-  
+
 import rospy
 from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import Float32
@@ -9,8 +9,6 @@ import numpy as np
 from std_msgs.msg import String
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
-
-
 
 
 class map_nav:
@@ -35,7 +33,6 @@ class map_nav:
         goal.pose.position.y = y
         goal.pose.position.z = 0.0
 
-
         goal.pose.orientation.x = 0.0
         goal.pose.orientation.y = 0.0
         goal.pose.orientation.z = 0.0
@@ -45,14 +42,12 @@ class map_nav:
 
         self.map_pub.publish(goal)
 
-
     def callback(self, data):
         cv2.namedWindow("Segmentation", 1)
         self.cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
 
         hsv = cv2.cvtColor(self.cv_image, cv2.COLOR_BGR2HSV)
 
-        
         if 'red' in self.colours_to_find:
             lower_red = np.array([0, 100, 100])
             upper_red = np.array([5, 360, 360])
@@ -61,7 +56,7 @@ class map_nav:
 
             # if it finds the colour, move towards it, stop within 1 meter and print found in the terminal
             # then remove this colour from the list
-        
+
         if 'blue' in self.colours_to_find:
             lower_blue = np.array([100, 120, 100])
             upper_blue = np.array([120, 360, 360])
@@ -70,7 +65,7 @@ class map_nav:
                 self.mask = self.mask + blue_mask
             else:
                 self.mask = blue_mask
-        
+
         if 'yellow' in self.colours_to_find:
             lower_yellow = np.array([20, 120, 100])
             upper_yellow = np.array([30, 360, 360])
@@ -79,7 +74,7 @@ class map_nav:
                 self.mask = self.mask + yellow_mask
             else:
                 self.mask = yellow_mask
-        
+
         if 'green' in self.colours_to_find:
             lower_green = np.array([50, 120, 100])
             upper_green = np.array([65, 360, 360])
@@ -89,31 +84,29 @@ class map_nav:
             else:
                 self.mask = green_mask
 
-
         # now apply a mask
 
         threshImg = cv2.bitwise_and(self.cv_image, self.cv_image, mask=self.mask)
-        cv2.imshow("Segmentation",threshImg)
+        cv2.imshow("Segmentation", threshImg)
         cv2.waitKey(1)
 
         h, w, d = self.cv_image.shape
         search_top = h / 4
-        search_bot = 3*h/4 + 20
+        search_bot = 3 * h / 4 + 20
         self.mask[0:search_top, 0:w] = 0
         self.mask[search_bot:h, 0:w] = 0
         M = cv2.moments(self.mask)
         if M['m00'] > 0:  # If the area is greater than 0
             # find the x and y co-ordinates of the centroid of the region
-            cx = int(M['m10']/M['m00']) 
-            cy = int(M['m01']/M['m00'])
+            cx = int(M['m10'] / M['m00'])
+            cy = int(M['m01'] / M['m00'])
 
             # Calculate the error, or how much the robot needs to turn to get the object at the center of its vision
-            error = cx - w/2
+            error = cx - w / 2
             # Publish a twist command telling the robot to move to the pole
             twist_msg = Twist()
             twist_msg.linear.x = 0.2
             twist_msg.angular.z = -float(error) / 100
-
 
             # now use the depth image to see how far the robot is from the object at the centroid calculated earlier
             # if the robot is under 1 meter away, stop
@@ -138,10 +131,6 @@ class map_nav:
 
             self.twist_pub.publish(twist_msg)
 
-        
-
-
-
     def spin(self):
         rate = rospy.Rate(20)
         twist_msg = Twist()
@@ -151,28 +140,20 @@ class map_nav:
         twist_msg.angular.x = 0.0
         twist_msg.angular.y = 0.0
         twist_msg.angular.z = 4
-        rospy.loginfo(twist_msg) # logs to terminal screen, but also to rosout and node log file
+        rospy.loginfo(twist_msg)  # logs to terminal screen, but also to rosout and node log file
         self.twist_pub.publish(twist_msg)
         # rate.sleep()
         print("spinning")
 
-
         # next I need to move to a pole if I see it and stop within 1 meter
         # Moments and centroids:
         # https://docs.opencv.org/3.1.0/dd/d49/tutorial_py_contour_features.html
-        # From page above: Contour area is given by the function cv2.contourArea() or from moments, M['m00']. 
+        # From page above: Contour area is given by the function cv2.contourArea() or from moments, M['m00'].
 
         # Get the image shape, for calculating error
 
-        
-
-
     def depth_image_callback(self, data):
         self.depth = self.bridge.imgmsg_to_cv2(data, "32FC1")
-
-
-
-
 
 
 rospy.init_node('navigation', anonymous=True)
@@ -202,7 +183,6 @@ map_nav1.spin()
 # To do this I could use image processing on the map itself to detect the regions of the map.
 # Then I could go to each region
 # More on image processing features here:
-
 
 
 rospy.spin()

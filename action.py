@@ -233,7 +233,7 @@ class Search:
             twist_msg = Twist()
             twist_msg.linear.x = 0.2
             twist_msg.angular.z = -float(error) / 100
-            # self.twist_pub.publish(twist_msg)
+            #s elf.twist_pub.publish(twist_msg)
             rospy.sleep(2)
             # try to send a move command to the pole
             # first find the depth

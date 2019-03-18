@@ -69,11 +69,11 @@ class Search:
             if self.y < -5:
                 self.y = -5
             # re send the goal
-            self.move_client(newx, newy)
+            # self.move_client(newx, newy)
             # spin to look for pole
-            print("sent new goal to", newx, newy)
-            self.spin()
-            print("exiting done_cb")
+            # print("sent new goal to", newx, newy)
+            # self.spin()
+            # print("exiting done_cb")
 
     def callback(self, data):
         cv2.namedWindow("Segmentation", 1)
@@ -231,9 +231,31 @@ class Search:
             print(error)
             # Publish a twist command telling the robot to move to the pole
             twist_msg = Twist()
-            twist_msg.linear.x = 0.2
-            twist_msg.angular.z = -float(error) / 100
-            #s elf.twist_pub.publish(twist_msg)
+            # if error is negative, turn right
+            if error < 0:
+                twist_msg.angular.z = 0.5
+                print("turning right")
+                while error < 0:
+                    M = cv2.moments(self.mask)
+                    cx = int(M['m10'] / M['m00'])
+                    cy = int(M['m01'] / M['m00'])
+                    error = cx - w / 2
+                    self.twist_pub.publish(twist_msg)
+
+            else:
+                # else turn left
+                twist_msg.angular.z = -0.5
+                print("turning left")
+                while error > 0:
+                    M = cv2.moments(self.mask)
+                    cx = int(M['m10'] / M['m00'])
+                    cy = int(M['m01'] / M['m00'])
+                    error = cx - w / 2
+                    self.twist_pub.publish(twist_msg)
+
+
+            twist_msg.angular.z = 0
+            self.twist_pub.publish(twist_msg)
             rospy.sleep(2)
             # try to send a move command to the pole
             # first find the depth
@@ -265,7 +287,7 @@ class Search:
                         xcor = -4
                     if ycor < -5:
                         ycor = -5
-                    print(xcor, ycor)
+                    print("facing up right", xcor, ycor)
                     self.move_client(xcor, ycor)
                 if self.orientation >= math.pi / 2:
                     xcor = round(self.posx + -1 * xdistance)
@@ -278,7 +300,7 @@ class Search:
                         xcor = -4
                     if ycor < -5:
                         ycor = -5
-                    print(xcor, ycor)
+                    print("facing up left", xcor, ycor)
                     self.move_client(xcor, ycor)
                 if self.orientation >= -math.pi and self.orientation <= -math.pi / 2:
                     xcor = round(self.posx + -1 * xdistance)
@@ -291,7 +313,7 @@ class Search:
                         xcor = -4
                     if ycor < -5:
                         ycor = -5
-                    print(xcor, ycor)
+                    print("facing down left", xcor, ycor)
                     self.move_client(xcor, ycor)
                 if self.orientation >= -math.pi / 2 and self.orientation < 0:
                     xcor = round(self.posx + xdistance)
@@ -304,7 +326,7 @@ class Search:
                         xcor = -4
                     if ycor < -5:
                         ycor = -5
-                    print(xcor, ycor)
+                    print("facing down right", xcor, ycor)
                     self.move_client(xcor, ycor)
         # spin incase the robot didn't tag the pole
                 self.spin()
@@ -333,15 +355,14 @@ if __name__ == "__main__":
     # sleep to give callbacks a chance to initialise
     rospy.sleep(2)
     while search.colours_to_find:
-        search.move_client(1, 4)
-        search.spin_and_search()
-        search.move_client(-1, 5)
-        search.spin_and_search()
+        search.move_client(-1, -2)
         search.move_client(1, -5)
         search.spin_and_search()
         search.move_client(-4, 0)
         search.spin_and_search()
         search.move_client(3, 0)
+        search.spin_and_search()
+        search.move_client(1, 4)
         search.spin_and_search()
 
     rospy.spin()

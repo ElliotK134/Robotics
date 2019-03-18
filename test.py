@@ -143,19 +143,19 @@ class Search:
                 twist_msg.angular.z = 0.0
                 # get the colour of the object found
                 print(self.threshImg[cy, cx][0:3])
-                if np.all(self.threshImg[cy, cx] == [0, 102, 102]):
+                if np.all(self.threshImg[cy, cx] >= [0, 90, 90]) and np.all(self.threshImg[cy, cx] < [10, 200, 200]):
                     print("found yellow")
                     self.colours_to_find = [i for i in self.colours_to_find if i != 'yellow']
                     print(self.colours_to_find)
-                if np.all(self.threshImg[cy, cx] == [0, 102, 0]):
+                if np.all(self.threshImg[cy, cx] >= [0, 90, 0]) and np.all(self.threshImg[cy, cx] < [10, 200, 10]):
                     print("found green")
                     self.colours_to_find = [i for i in self.colours_to_find if i != 'green']
                     print(self.colours_to_find)
-                if np.all(self.threshImg[cy, cx] == [0, 0, 102]):
+                if np.all(self.threshImg[cy, cx] >= [0, 0, 90]) and np.all(self.threshImg[cy, cx] < [10, 10, 200]):
                     print("found red")
                     self.colours_to_find = [i for i in self.colours_to_find if i != 'red']
                     print(self.colours_to_find)
-                if np.all(self.threshImg[cy, cx] == [102, 0, 0]):
+                if np.all(self.threshImg[cy, cx] >= [90, 0, 0]) and np.all(self.threshImg[cy, cx] < [200, 10, 10]):
                     print("found blue")
                     self.colours_to_find = [i for i in self.colours_to_find if i != 'blue']
                     print(self.colours_to_find)
@@ -367,8 +367,6 @@ if __name__ == "__main__":
         search.move_client(3, 1)
         search.spin_and_search()
         search.move_client(0, -1)
-        search.spin_and_search()
-        search.move_client(-4, 0)
         search.spin_and_search()
         search.move_client(-4, 0)
         search.spin_and_search()

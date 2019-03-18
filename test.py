@@ -259,7 +259,6 @@ class Search:
                         break
                     self.twist_pub.publish(twist_msg)
 
-
             twist_msg.angular.z = 0
             self.twist_pub.publish(twist_msg)
             rospy.sleep(2)
@@ -273,7 +272,7 @@ class Search:
                 if self.orientation >= math.pi / 2:
                     theta = math.pi - self.orientation
                 if self.orientation >= -math.pi and self.orientation <= -math.pi / 2:
-                    theta = -math.pi / 2 + self.orientation
+                    theta = -math.pi / 2 - self.orientation
                 if self.orientation >= -math.pi / 2 and self.orientation < 0:
                     theta = 0 - self.orientation
                 xdistance = depth * math.cos(theta)

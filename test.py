@@ -231,33 +231,32 @@ class Search:
             print(error)
             # Publish a twist command telling the robot to move to the pole
             twist_msg = Twist()
-            # if error is negative, turn right
+            # if facing down right or up left
+            # if self.orientation >= -math.pi / 2 and self.orientation < 0 or self.orientation >= math.pi / 2:
+                # if error is negative, turn right
             if error < 0:
                 twist_msg.angular.z = 0.5
-                print("turning right")
+                print("turning anticlockwise")
                 while error < 0:
                     M = cv2.moments(self.mask)
                     if M['m00'] > 0:
                         cx = int(M['m10'] / M['m00'])
                         cy = int(M['m01'] / M['m00'])
-                        error = cx - w / 2
-                    else:
-                        break
+                    error = cx - w / 2
                     self.twist_pub.publish(twist_msg)
 
             else:
                 # else turn left
                 twist_msg.angular.z = -0.5
-                print("turning left")
+                print("turning clockwise")
                 while error > 0:
                     M = cv2.moments(self.mask)
                     if M['m00'] > 0:
                         cx = int(M['m10'] / M['m00'])
                         cy = int(M['m01'] / M['m00'])
-                        error = cx - w / 2
-                    else:
-                        break
+                    error = cx - w / 2
                     self.twist_pub.publish(twist_msg)
+        
 
             twist_msg.angular.z = 0
             self.twist_pub.publish(twist_msg)
@@ -272,7 +271,7 @@ class Search:
                 if self.orientation >= math.pi / 2:
                     theta = math.pi - self.orientation
                 if self.orientation >= -math.pi and self.orientation <= -math.pi / 2:
-                    theta = -math.pi / 2 - self.orientation
+                    theta = -math.pi / 2 + self.orientation
                 if self.orientation >= -math.pi / 2 and self.orientation < 0:
                     theta = 0 - self.orientation
                 xdistance = depth * math.cos(theta)

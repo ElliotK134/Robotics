@@ -195,7 +195,7 @@ class Search:
                 depth = self.depth[cy, cx]
                 if not math.isnan(depth):
                     self.move_to_pole()
-                break
+                    break
             self.twist_pub.publish(twist_msg)
 
     def spin(self):
@@ -231,6 +231,7 @@ class Search:
             print(error)
             # Publish a twist command telling the robot to move to the pole
             twist_msg = Twist()
+<<<<<<< HEAD
             # if error is negative, turn right
             if error < 0:
                 twist_msg.angular.z = 0.5
@@ -258,6 +259,66 @@ class Search:
                     else:
                         break
                     self.twist_pub.publish(twist_msg)
+=======
+            # if facing top right
+            if self.orientation >= 0 and self.orientation <= math.pi / 2:
+                # if error is negative, turn left
+                if error < 0:
+                    twist_msg.angular.z = -0.5
+                    print("turning right")
+                    while error < 0:
+                        M = cv2.moments(self.mask)
+                        if M['m00'] > 0:
+                            cx = int(M['m10'] / M['m00'])
+                            cy = int(M['m01'] / M['m00'])
+                            error = cx - w / 2
+                        else:
+                            break
+                        self.twist_pub.publish(twist_msg)
+
+                else:
+                    # else turn right
+                    twist_msg.angular.z = 0.5
+                    print("turning left")
+                    while error > 0:
+                        M = cv2.moments(self.mask)
+                        if M['m00'] > 0:
+                            cx = int(M['m10'] / M['m00'])
+                            cy = int(M['m01'] / M['m00'])
+                            error = cx - w / 2
+                        else:
+                            break
+                        self.twist_pub.publish(twist_msg)
+
+            if self.orientation >= 0 and self.orientation <= math.pi / 2 or self.orientation >= -math.pi and self.orientation <= -math.pi / 2:
+                # if error is negative, turn right
+                if error < 0:
+                    twist_msg.angular.z = 0.5
+                    print("turning right")
+                    while error < 0:
+                        M = cv2.moments(self.mask)
+                        if M['m00'] > 0:
+                            cx = int(M['m10'] / M['m00'])
+                            cy = int(M['m01'] / M['m00'])
+                            error = cx - w / 2
+                        else:
+                            break
+                        self.twist_pub.publish(twist_msg)
+
+                else:
+                    # else turn left
+                    twist_msg.angular.z = -0.5
+                    print("turning left")
+                    while error > 0:
+                        M = cv2.moments(self.mask)
+                        if M['m00'] > 0:
+                            cx = int(M['m10'] / M['m00'])
+                            cy = int(M['m01'] / M['m00'])
+                            error = cx - w / 2
+                        else:
+                            break
+                        self.twist_pub.publish(twist_msg)
+>>>>>>> trig-fixes
 
 
             twist_msg.angular.z = 0
@@ -268,12 +329,16 @@ class Search:
             depth = self.depth[cy, cx]
             if not math.isnan(depth):
                 # now use the depth and trigonometry to find the x and y distance
+                # if facing top right
                 if self.orientation >= 0 and self.orientation <= math.pi / 2:
                     theta = self.orientation
+                # if facing top left
                 if self.orientation >= math.pi / 2:
                     theta = math.pi - self.orientation
+                # if facing bottom left
                 if self.orientation >= -math.pi and self.orientation <= -math.pi / 2:
                     theta = -math.pi - self.orientation
+                # if facing bottom right
                 if self.orientation >= -math.pi / 2 and self.orientation < 0:
                     theta = -math.pi / 2 - self.orientation
                 xdistance = depth * math.cos(theta)
@@ -361,12 +426,30 @@ if __name__ == "__main__":
     # sleep to give callbacks a chance to initialise
     rospy.sleep(2)
     while search.colours_to_find:
+<<<<<<< HEAD
         search.move_client(-1, -2)
         search.move_client(1, -5)
+=======
+        search.move_client(2, 4)
+        search.spin_and_search()
+        search.move_client(-1, 3)
+        search.spin_and_search()
+        search.move_client(3, 1)
+        search.spin_and_search()
+        search.move_client(0, -1)
+        search.spin_and_search()
+        search.move_client(-4, 0)
+>>>>>>> trig-fixes
         search.spin_and_search()
         search.move_client(-4, 0)
         search.spin_and_search()
-        search.move_client(3, 0)
+        search.move_client(-4, 2)
+        search.spin_and_search()
+        search.move_client(1, -3)
+        search.spin_and_search()
+        search.move_client(-3, -5)
+        search.spin_and_search()
+        search.move_client(1, -4)
         search.spin_and_search()
         search.move_client(1, 4)
         search.spin_and_search()

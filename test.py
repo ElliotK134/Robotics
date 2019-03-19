@@ -271,7 +271,7 @@ class Search:
                 if self.orientation >= math.pi / 2:
                     theta = math.pi - self.orientation
                 if self.orientation >= -math.pi and self.orientation <= -math.pi / 2:
-                    theta = -math.pi / 2 + self.orientation
+                    theta = -math.pi + self.orientation
                 if self.orientation >= -math.pi / 2 and self.orientation < 0:
                     theta = 0 - self.orientation
                 xdistance = depth * math.cos(theta)

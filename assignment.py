@@ -138,6 +138,7 @@ class Search:
             # if the robot is under 1 meter away, stop
             depth = self.depth[cy, cx]
             if depth < 1.0:
+                print("depth =", depth)
                 twist_msg = Twist()
                 twist_msg.linear.x = 0.0
                 twist_msg.angular.z = 0.0
@@ -147,20 +148,24 @@ class Search:
                     print("found yellow")
                     self.colours_to_find = [i for i in self.colours_to_find if i != 'yellow']
                     print(self.colours_to_find)
-                if np.all(self.threshImg[cy, cx] >= [0, 90, 0]) and np.all(self.threshImg[cy, cx] < [10, 200, 10]):
+                    rospy.sleep(1)
+                elif np.all(self.threshImg[cy, cx] >= [0, 90, 0]) and np.all(self.threshImg[cy, cx] < [10, 200, 10]):
                     print("found green")
                     self.colours_to_find = [i for i in self.colours_to_find if i != 'green']
                     print(self.colours_to_find)
-                if np.all(self.threshImg[cy, cx] >= [0, 0, 90]) and np.all(self.threshImg[cy, cx] < [10, 10, 200]):
+                    rospy.sleep(1)
+                elif np.all(self.threshImg[cy, cx] >= [0, 0, 90]) and np.all(self.threshImg[cy, cx] < [10, 10, 200]):
                     print("found red")
                     self.colours_to_find = [i for i in self.colours_to_find if i != 'red']
                     print(self.colours_to_find)
-                if np.all(self.threshImg[cy, cx] >= [90, 0, 0]) and np.all(self.threshImg[cy, cx] < [200, 10, 10]):
+                    rospy.sleep(1)
+                elif np.all(self.threshImg[cy, cx] >= [90, 0, 0]) and np.all(self.threshImg[cy, cx] < [200, 10, 10]):
                     print("found blue")
                     self.colours_to_find = [i for i in self.colours_to_find if i != 'blue']
                     print(self.colours_to_find)
+                    rospy.sleep(1)
                 self.twist_pub.publish(twist_msg)
-                rospy.sleep(2)
+                rospy.sleep(3)
 
     def depth_image_callback(self, data):
         self.depth = self.bridge.imgmsg_to_cv2(data, "32FC1")

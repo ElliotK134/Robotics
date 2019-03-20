@@ -414,31 +414,49 @@ if __name__ == "__main__":
     search = Search()
     # sleep to give callbacks a chance to initialise
     rospy.sleep(2)
-    while search.colours_to_find:
+    while len(search.colours_to_find) != 0:
         search.move_client(2, 4)
         search.spin_and_search()
+        if len(search.colours_to_find) == 0:
+            break
         search.move_client(-1, 3)
         search.spin_and_search()
+        if len(search.colours_to_find) == 0:
+            break
         search.move_client(3, 1)
         search.spin_and_search()
+        if len(search.colours_to_find) == 0:
+            break
         search.move_client(0, -1)
         search.spin_and_search()
+        if len(search.colours_to_find) == 0:
+            break
         search.move_client(-4, 0)
         search.spin_and_search()
+        if len(search.colours_to_find) == 0:
+            break
         search.move_client(-4, 2)
         search.spin_and_search()
+        if len(search.colours_to_find) == 0:
+            break
         search.move_client(1, -3)
         search.spin_and_search()
+        if len(search.colours_to_find) == 0:
+            break
         search.move_client(-3, -5)
         search.spin_and_search()
+        if len(search.colours_to_find) == 0:
+            break
         search.move_client(1, -4)
         search.spin_and_search()
+        if len(search.colours_to_find) == 0:
+            break
         search.move_client(-4, 4.5)
         search.spin_and_search()
-
         if len(search.colours_to_find) == 0:
-            print("found all objects!")
             break
 
+
+    print("Found all objects!")
     rospy.spin()
     cv2.destroyAllWindows()

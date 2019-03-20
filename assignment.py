@@ -144,7 +144,7 @@ class Search:
         h, w, d = self.cv_image.shape
         # search the bottom of the image
         search_region = h / 2
-        self.mask[search_region:h, 0:w] = 0
+        self.mask[0:search_region, 0:w] = 0
         M = cv2.moments(self.mask)
         if M['m00'] > 0:  # If the area is greater than 0
             # find the x and y co-ordinates of the centroid of the region
@@ -219,7 +219,7 @@ class Search:
             h, w, d = self.cv_image.shape
             # search the bottom of the image
             search_region = h / 2
-            self.mask[search_region:h, 0:w] = 0
+            self.mask[0:search_region, 0:w] = 0
             M = cv2.moments(self.mask)
             if M['m00'] > 5000:  # If the area is greater than 0
                 # get the centroid of the area and stop
@@ -257,7 +257,7 @@ class Search:
         # search the bottom of the image
         h, w, d = self.cv_image.shape
         search_region = h / 2
-        self.mask[search_region:h, 0:w] = 0
+        self.mask[0:search_region, 0:w] = 0
         M = cv2.moments(self.mask)
         # print(M['m00'])
         if M['m00'] > 5000:  # If the area is greater than 0
@@ -270,6 +270,7 @@ class Search:
             # Publish a twist command telling the robot to move to the pole
             twist_msg = Twist()
             # if error is negative, turn right
+            t = int(time.time())
             if error < 0:
                 twist_msg.angular.z = 0.5
                 print("turning anticlockwise")
@@ -281,6 +282,8 @@ class Search:
                         cy = int(M['m01'] / M['m00'])
                     error = cx - w / 2
                     self.twist_pub.publish(twist_msg)
+                    if int(time.time()) > t + 10:  # stops the loop from becoming infinite if the object disappears
+                        break
 
             else:
                 # else turn left
@@ -294,6 +297,8 @@ class Search:
                         cy = int(M['m01'] / M['m00'])
                     error = cx - w / 2
                     self.twist_pub.publish(twist_msg)
+                    if int(time.time()) > t + 10:  # stops the loop from becoming infinite if the object disappears
+                        break
 
             # stop when the pole is at the center of the vision
             twist_msg.angular.z = 0
@@ -341,7 +346,7 @@ class Search:
                     # send the move command
                     self.move_client(xcor, ycor)
                 # if facing up left
-                if self.orientation >= math.pi / 2:
+                elif self.orientation >= math.pi / 2:
                     # the x distance is negative
                     xcor = round(self.posx + -1 * xdistance)
                     ycor = round(self.posy + ydistance)
@@ -357,7 +362,7 @@ class Search:
                     print("facing up left", xcor, ycor)
                     # send the command
                     self.move_client(xcor, ycor)
-                if self.orientation >= -math.pi and self.orientation <= -math.pi / 2:
+                elif self.orientation >= -math.pi and self.orientation <= -math.pi / 2:
                     # both x and y distances are negative
                     xcor = round(self.posx + -1 * xdistance)
                     ycor = round(self.posy + -1 * ydistance)
@@ -373,7 +378,7 @@ class Search:
                     print("facing down left", xcor, ycor)
                     # send the command
                     self.move_client(xcor, ycor)
-                if self.orientation >= -math.pi / 2 and self.orientation < 0:
+                elif self.orientation >= -math.pi / 2 and self.orientation < 0:
                     # the y distance is negative
                     xcor = round(self.posx + xdistance)
                     ycor = round(self.posy + -1 * ydistance)
@@ -410,7 +415,6 @@ if __name__ == "__main__":
     # sleep to give callbacks a chance to initialise
     rospy.sleep(2)
     while search.colours_to_find:
-        search.spin_and_search()
         search.move_client(2, 4)
         search.spin_and_search()
         search.move_client(-1, 3)
@@ -428,6 +432,8 @@ if __name__ == "__main__":
         search.move_client(-3, -5)
         search.spin_and_search()
         search.move_client(1, -4)
+        search.spin_and_search()
+        search.move_client(-4, 4.5)
         search.spin_and_search()
 
         if len(search.colours_to_find) == 0:
